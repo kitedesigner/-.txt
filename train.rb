@@ -1,68 +1,68 @@
 class Train
-  attr_reader :type, :speed, :route, :carriages_amount
-
-  def initialize(number, type, carriages_amount)
+  attr_reader :speed, :carriages, :type
+  def initialize(number)
     @number = number
-    @type = type
-    @carriages_amount = carriages_amount
+    @carriages = []
     @speed = 0
+  end
+
+  def increase_speed(growth)
+    @speed += growth
+  end
+
+  def braking
+    @speed = 0
+  end
+
+  def add_carriage(carriage)
+    if speed == 0 && type == carriage.type
+      @carriages << carriage
+    end
+  end
+
+  def delete_carriage(carriage)
+    if speed == 0 && @carriages.size > 0
+      @carriages.delete(carriage)
+    end
+  end
+
+  def carriages_quantity
+    @carriages.size
+  end
+
+  def receive_route(route)
+    @route = route
+    @current_station_index = 0
+    route.stations[0].receive_train(self)
   end
 
   def current_station
-    route.stations[@current_station_index]
+    @route.stations[@current_station_index]
   end
 
-  def previous_station
-    route.stations[@current_station_index - 1] unless @current_station_index == 0
+  def go_next_station
+    if next_station
+      current_station.dispatch_train(self)
+      @current_station_index += 1
+      current_station.receive_train(self)
+    end
   end
 
   def next_station
-    route.stations[@current_station_index + 1]
+    @route.stations[@current_station_index + 1]
   end
 
-  def increase_speed(speed)
-    @speed += speed if speed > 0
-  end
-
-  def decrease_speed(speed)
-    if @speed - speed < 0
-      @speed  = 0
-    else
-      @speed -= speed
-    end
-  end
-
-  def stop
-    @speed = 0
-  end
-
-  def add_carriage
-    @carriages_amount += 1 if speed == 0
-  end
-
-  def remove_carriage
-    @carriages_amount -= 1 if speed == 0 && carriages_amount > 0
-  end
-
-  def set_route(route)
-    @route = route
-    @current_station_index = 0
-    route.first_station.accept_train(self)
-  end
-
-  def move_to_next_station
-    if next_station
-      current_station.send_train(self)
-      next_station.accept_train(self)
-      @current_station_index += 1
-    end
-  end
-
-  def move_to_previous_station
+  def go_previous_station
     if previous_station
-      current_station.send_train(self)
-      previous_station.accept_train(self)
+      current_station.dispatch_train(self)
       @current_station_index -= 1
+      current_station.receive_train(self)
+    end
+  end
+
+  def previous_station
+    if @current_station_index > 0
+      @route.stations[@current_station_index - 1]
     end
   end
 end
