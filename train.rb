@@ -1,9 +1,22 @@
+require_relative 'manufacturer'
+require_relative 'instance_counter'
+
 class Train
-  attr_reader :speed, :carriages, :type
+  include Manufacturer
+  include InstanceCounter
+  attr_reader :speed, :carriages, :type, :number
+  @@trains = []
+
   def initialize(number)
     @number = number
     @carriages = []
     @speed = 0
+    @@trains << self
+    register_instance
+  end
+
+  def self.find(number)
+    @@trains.find{|train| train.number == number}
   end
 
   def increase_speed(growth)
@@ -66,3 +79,6 @@ class Train
     end
   end
 end
+
+# train = Train.new('5678')
+# puts "количество инстансов = #{Train.instances}"
