@@ -1,20 +1,40 @@
-require_relative 'instance_counter'
+require_relative 'modules/instance_counter.rb'
 
 class Route
   include InstanceCounter
-  attr_reader :stations
+  attr_reader :start_station, :end_station
+
   def initialize(start_station, end_station)
-    @stations = [start_station, end_station]
+    @start_station = start_station
+    @end_station = end_station
+    @in_between_stations = []
+    validate!
     register_instance
   end
 
-  def add_station(station_to_add)
-    stations.insert(-2, station_to_add)
+  def delete_station(station)
+    @in_between_stations.delete station
   end
 
-  def delete_station(station_to_delete)
-    if station_to_delete != stations[0] && station_to_delete != stations[-1]
-      stations.delete(station_to_delete)
+  def add_station(station)
+    @in_between_stations.push station
+  end
+
+  def stations
+    [@start_station] + @in_between_stations + [@end_station]
+  end
+
+  def valid?
+    validate!
+  rescue
+    false
+  end
+
+  private
+
+  def validate!
+    if [start_station, end_station].any? { |station| !station.is_a? Station }
+      raise 'Необходимы станции для создания маршрута'
     end
   end
 end

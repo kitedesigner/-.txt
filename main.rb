@@ -1,270 +1,162 @@
+require_relative 'station.rb'
+require_relative 'route.rb'
+require_relative 'trains/cargo_train.rb'
+require_relative 'trains/passenger_train.rb'
+require_relative 'cars/cargo_car.rb'
+require_relative 'cars/passenger_car.rb'
 
-require_relative "station"
-require_relative "route"
-require_relative "train"
-require_relative "cargo_train"
-require_relative "passenger_train"
-require_relative "carriage"
-require_relative "passenger_carriage"
-require_relative "cargo_carriage"
+@trains = []
+@routes = []
 
-class Main
-  def initialize
-    @carriages = []
-    @routes = []
-    @stations = []
-    @trains = []
+def render_menu
+  puts '1 - Создать поезд'
+  puts '2 - Создать маршрут'
+  puts '3 - Назначить маршрут'
+  puts '4 - Добавить вагон'
+  puts '5 - Отцепить вагон'
+  puts '6 - Переместить поезд'
+  puts '7 - Список станций'
+  puts '8 - Выход'
+end
+
+def create_train
+  print 'Введите номер поезда: '
+  number = gets.chomp
+  print 'Введите тип поезда (пассажирский/грузовой): '
+  type = gets.chomp.downcase
+  if type == 'пассажирский'
+    @trains << PassengerTrain.new(number)
+  elsif type == 'грузовой'
+    @trains << CargoTrain.new(number)
+  else
+    raise 'Неверный тип поезда'
   end
+  puts "Создан #{type} поезд, номер #{number}"
+  gets
+rescue Exception => e
+  puts e.message
+  retry
+end
 
-  def start
-    puts 'Добро пожаловать в интерфейс управления железнодорожными дорогами!'
-    loop do
-      show_menu
-      action_number = get_action
-      break if action_number == 0
-      launch_process(action_number)
-    end
+def create_route
+  print 'Введите начальную станцию маршрута: '
+  start_station = create_station(gets.chomp)
+  print 'Введите конечную станцию маршрута: '
+  end_station = create_station(gets.chomp)
+  route = Route.new(start_station, end_station)
+  loop do
+    print 'Введите название промежуточной станции или "стоп" для выхода: '
+    station_name = gets.chomp
+    break if station_name == 'стоп'
+    route.add_station(station_name)
   end
+  @routes << route
+end
 
-  private
-  attr_reader :stations, :routes, :trains, :carriages
+def create_station(name)
+  Station.new(name)
+rescue Exception => e
+  puts e.message
+  print 'Введите новое значение: '
+  retry
+end
 
-  def show_menu
-    puts "\nДля вас доступны следующие команды:"
-    puts "\t 1 - Создать станцию"\
-         "\n\t 2 - Смотреть список станций"\
-         "\n\t 3 - Создать поезд"\
-         "\n\t 4 - Управление маршрутами"\
-         "\n\t 5 - Назначить маршрут поезду"\
-         "\n\t 6 - Перемещение поезда по маршруту"\
-         "\n\t 7 - Список поездов на станции"\
-         "\n\t 8 - Создать вагоны"\
-         "\n\t 9 - Управление вагонами поезда"\
-         "\n\t 0 - завершить работу с программой"
-  end
+def assign_route
+  print_routes
+  print_trains
+  train = get_train_from_user
+  print 'Введите номер маршрута: '
+  route_number = gets.chomp.to_i
+  train.assign_route(@routes[route_number - 1])
+end
 
-  def get_action
-    print 'Введите номер интересующей вас команды: '
-    gets.chomp.to_i
-  end
-
-  def launch_process(key)
-    case key
-    when 1
-      create_station
-    when 2
-      view_stations
-    when 3
-      create_train
-    when 4
-      routes_management
-    when 5
-      assign_route
-    when 6
-      route_moving
-    when 7
-      view_trains_on_station    
-    when 8
-      create_carriage
-    when 9
-      carriage_management
-    end
-  end
-
-  def select_exist_entity(list_name)
-    list = self.send(list_name)
-    list.each_with_index do |entity, index|
-      puts "#{index + 1}) #{entity.inspect}"
-    end
-    selected_index = gets.chomp.to_i - 1
-    list[selected_index]
-  end
-
-  def create_station
-    print 'Введите название станции: '
-    station_name = gets.chomp.to_s
-    station = Station.new(station_name)
-    puts "Создана станция: #{station.inspect}"
-    @stations << station
-  end
-
-  def view_stations
-    puts "\nСписок станций в системе:"
-    stations.each{|station| puts station.name}
-  end
-
-  def create_train
-    puts "Введите тип поезда, который вы хотите создать:"\
-         "\n\t 1 - Грузовой "\
-         "\n\t 2 - Пассажирский"
-    train_type = gets.chomp.to_i
-    print 'Введите номер поезда: '
-    train_number = gets.chomp.to_i
-    case train_type
-    when 1
-      cargo_train = CargoTrain.new(train_number)
-      @trains << cargo_train
-      puts "Создан грузовой поезд: #{cargo_train.inspect}"
-    when 2
-      passenger_train = PassengerTrain.new(train_number)
-      @trains << passenger_train
-      puts "Создан пассажирский поезд: #{passenger_train.inspect}"
-    end
-  end
-
-  def routes_management
-    puts "Выберите интересующее вас действие:"\
-    "\n\t 1 - Создать маршрут"\
-    "\n\t 2 - Управлять существующим маршрутом"
-    select = gets.chomp.to_i
-    case select
-      when 1
-        create_route
-      when 2
-        edit_route
-    end
-  end
-
-  def create_route
-    puts "Выберите начальную станцию маршрута:"
-    start_station = select_exist_entity(:stations)
-  
-    puts "Выберите конечную станцию маршрута:"
-    end_station = select_exist_entity(:stations)
-  
-    route = Route.new(start_station, end_station)
-    @routes << route
-    puts "Создан маршрут #{route.inspect}"
-  end
-
-  def edit_route
-    puts "Выберите маршрут, которым вы хотите управлять:"
-    selected_route = select_exist_entity(:routes)
-    puts "Выберите операцию над маршрутом #{selected_route.inspect}:"\
-         "\n\t 1 - Добавить станцию"\
-         "\n\t 2 - Удалить станцию"
-    route_operation = gets.chomp.to_i
-    case route_operation
-    when 1
-      puts "Выберите станцию, которую, вы хотите добавить в маршрут:"
-      station_to_add = select_exist_entity(:stations)
-      selected_route.add_station(station_to_add)
-      puts "в маршрут добавлена станция #{station_to_add.name}"
-      puts "обновленный маршрут: #{selected_route.inspect}"
-    when 2
-      puts "Выберите станцию, которую нобходимо удалить из маршрута:"
-      selected_route.stations.each_with_index do |station, index|
-        puts "#{index + 1} - #{station.inspect}"
-      end
-      station_to_delete_index = gets.chomp.to_i - 1
-      station_to_delete = selected_route.stations[station_to_delete_index]
-      delete_result = selected_route.delete_station(station_to_delete)
-      if delete_result
-        puts "из маршрута удалена станция #{station_to_delete.name}"
-        puts "обновленный маршрут: #{selected_route.inspect}"
-      else
-        puts "Ошибка: вы пытаетесь удалить начальную или конечную станцию маршрута"
-      end
-    end
-  end
-
-  def assign_route
-    puts "Выберите поезд, которому вы хотите назначить маршрут:"
-    selected_train = select_exist_entity(:trains)
-    puts "Выберите маршрут, который вы хотите назначить поезду:"
-    selected_route = select_exist_entity(:routes)
-    selected_train.receive_route(selected_route)
-    puts "Для поезда #{selected_train.inspect}"
-    puts "назначен маршрут #{selected_route.inspect}"
-  end
-
-  def route_moving
-    puts "Выберите поезд, который планируете переместить:"
-    train = select_exist_entity(:trains)
-    puts "Поезд находится на станции #{train.current_station.name}"
-    puts "Что нужно сделать с поездом?"\
-    "\n\t 1 - Переместить вперед по маршруту"\
-    "\n\t 2 - Переместить назад по маршруту"
-    move_operation = gets.chomp.to_i
-    case move_operation
-    when 1
-      if train.go_next_station
-        puts "поезд #{train} перемещен вперед на 1 станцию, текущая станция = #{train.current_station.name}"
-      else
-        puts "Поезд не может быть перемещен вперед, так как находится на конечной станции маршрута"
-      end
-    when 2
-      if train.go_previous_station
-        puts "поезд #{train} перемещен назад на 1 станцию, текущая станция = #{train.current_station.name}"
-      else
-        puts "Поезд не может быть перемещен назад, так как находится на начальной станции маршрута"
-      end
-    end
-  end
-
-  def view_trains_on_station
-    puts "Выберите станцию, для которой хотите посмотреть список поездов:"
-    station = select_exist_entity(:stations)
-    if station
-      puts "\nСписок поездов на станции #{station.name}"
-      station.trains.each{|train| puts train.inspect} 
-    end
-  end
-
-  def create_carriage
-    puts "Введите тип вагона, который вы хотите создать:"\
-    "\n\t 1 - Грузовой "\
-    "\n\t 2 - Пассажирский"
-    carriage_type = gets.chomp.to_i
-    case carriage_type
-    when 1
-      carriage = CargoCarriage.new
-      @carriages << carriage
-      puts "Создан грузовой вагон: #{carriage}"
-    when 2
-      carriage = PassengerCarriage.new
-      puts "Создан пассажирский вагон: #{carriage}"
-      @carriages << carriage
-    end
-  end
-
-  def carriage_management
-    puts "Выберите поезд, для изменения вагонов:"
-    selected_train = select_exist_entity(:trains)
-    puts "Выберите операцию над поездом:"\
-    "\n\t 1 - Добавить вагон "\
-    "\n\t 2 - Удалить вагон"
-    carriage_operation = gets.chomp.to_i
-    case carriage_operation
-    when 1
-      add_carriage(selected_train)
-    when 2
-      delete_carriage(selected_train)
-    end
-  end
-
-  def add_carriage(selected_train)
-    puts "Выберите вагон для добавления"
-    selected_carriage = select_exist_entity(:carriages)
-    result = selected_train.add_carriage(selected_carriage)
-    if result 
-      puts "для поезда #{selected_train.inspect} добавлен вагон #{selected_carriage}"
-    else
-      puts "для поезда #{selected_train.inspect} вагон #{selected_carriage} не может быть добавлен, "\
-           "т.к. он другого типа или поезд не остановлен"
-    end
-  end
-
-  def delete_carriage(selected_train)
-    puts "Выберите вагон для удаления: "
-    selected_train.carriages.each_with_index do |carriage, index|
-      puts "#{index + 1} - #{carriage.inspect}"
-    end
-    carriage_to_delete_index = gets.chomp.to_i - 1
-    carriage_to_delete = selected_train.carriages[carriage_to_delete_index]
-    selected_train.delete_carriage(carriage_to_delete)
-    puts "у поезда #{selected_train.inspect} удален вагон #{carriage_to_delete}"
+def add_car
+  print_trains
+  train = get_train_from_user
+  if train.is_a? CargoTrain
+    train.add_car CargoCar.new
+  elsif train.is_a? PassengerTrain
+    train.add_car PassengerCar.new
   end
 end
 
-Main.new.start
+def unhook_car
+  print_trains
+  get_train_from_user.unhook_car
+end
+
+def move_train
+  print_trains
+  train = get_train_from_user
+  print 'Введите направление движения (вперед/назад)'
+  direction = gets.chomp.downcase
+  if direction == 'вперед'
+    train.go_to_next_station
+  elsif direction == 'назад'
+    train.go_to_previous_station
+  end
+end
+
+def get_stations_and_trains
+  @routes.each do |route|
+    puts "Маршрут: #{route.start_station.name} - #{route.end_station.name}"
+    route.stations.each do |station|
+      print "\tСтанция: #{station.name} "
+      trains = station.trains.map { |train| train.number }
+      trains = ['отсутствуют'] if trains.empty?
+      puts "\tПоезда: #{trains.join(', ')} "
+    end
+  end
+  gets
+end
+
+def print_trains
+  puts 'Поезда: '
+  @trains.each { |train| puts train.number }
+end
+
+def print_routes
+  puts 'Маршруты'
+  @routes.each_with_index do |route, index|
+    puts "#{index + 1} #{route.start_station.name} - #{route.end_station.name}"
+  end
+end
+
+def get_train_from_user
+  print 'Введите номер поезда: '
+  train_number = gets.chomp
+  @trains.find { |train| train.number == train_number }
+end
+
+def start
+  loop do
+    system 'cls'
+    render_menu
+    print 'Выбор: '
+    choice = gets.chomp
+    action choice
+  end
+end
+
+def action(choice)
+  case choice
+  when '1'
+    create_train
+  when '2'
+    create_route
+  when '3'
+    assign_route
+  when '4'
+    add_car
+  when '5'
+    unhook_car
+  when '6'
+    move_train
+  when '7'
+    get_stations_and_trains
+  when '8'
+    exit
+  end
+end
+
+start

@@ -1,30 +1,38 @@
-require_relative 'instance_counter'
+require_relative 'modules/instance_counter.rb'
 
 class Station
   include InstanceCounter
-  attr_reader :name, :trains
-  @@stations = []
+  attr_reader :trains, :name
 
+  @@stations = []
+  def self.all
+    @@stations
+  end
   def initialize(name)
     @name = name
     @trains = []
+    validate!
     @@stations << self
     register_instance
   end
 
-  def self.all
-    @@stations
-  end
-  
-  def receive_train(train)
-    trains << train
+  def arrival(train)
+    @trains.push train
   end
 
-  def dispatch_train(train)
-    trains.delete(train)
+  def departure(train)
+    @trains.delete train
   end
 
-  def trains_by_type(type)
-    trains.select{|train| train.type == type}.size
+  def valid?
+    validate!
+  rescue
+    false
+  end
+
+  private
+
+  def validate!
+    raise 'Название не может быть пустым' if name.empty?
   end
 end
