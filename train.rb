@@ -1,84 +1,83 @@
-require_relative 'manufacturer'
-require_relative 'instance_counter'
-
+require_relative '../modules/manufacturer.rb'
+require_relative '../modules/instance_counter.rb'
 class Train
   include Manufacturer
   include InstanceCounter
-  attr_reader :speed, :carriages, :type, :number
+  attr_reader :speed, :type, :route, :current_station_index, :number
+
   @@trains = []
+  def self.find(number)
+    @@trains.find { |train| train.number == number }
+  end
 
   def initialize(number)
     @number = number
-    @carriages = []
+    @cars = []
     @speed = 0
+    validate!
     @@trains << self
     register_instance
   end
 
-  def self.find(number)
-    @@trains.find{|train| train.number == number}
+  def increase_speed
+    @speed += 10
   end
 
-  def increase_speed(growth)
-    @speed += growth
-  end
-
-  def braking
+  def stop_train
     @speed = 0
   end
 
-  def add_carriage(carriage)
-    if speed == 0 && type == carriage.type
-      @carriages << carriage
-    end
+  def add_car(car)
+    @cars << car if speed == 0 && car.type == type
   end
 
-  def delete_carriage(carriage)
-    if speed == 0 && @carriages.size > 0
-      @carriages.delete(carriage)
-    end
+  def unhook_car
+    @cars.pop
   end
 
-  def carriages_quantity
-    @carriages.size
-  end
-
-  def receive_route(route)
+  def assign_route(route)
     @route = route
+    route.start_station.arrival self
     @current_station_index = 0
-    route.stations[0].receive_train(self)
   end
 
-  def current_station
-    @route.stations[@current_station_index]
-  end
-
-  def go_next_station
+  def go_to_next_station
     if next_station
-      current_station.dispatch_train(self)
+      current_station.departure self
       @current_station_index += 1
-      current_station.receive_train(self)
+      current_station.arrival self
     end
   end
+
+  def go_to_previous_station
+    if previous_station
+      current_station.departure self
+      @current_station_index -= 1
+      current_station.arrival self
+    end
+  end
+
+  def valid?
+    validate!
+  rescue
+    false
+  end
+
+  private
 
   def next_station
-    @route.stations[@current_station_index + 1]
-  end
-
-  def go_previous_station
-    if previous_station
-      current_station.dispatch_train(self)
-      @current_station_index -= 1
-      current_station.receive_train(self)
-    end
+    route.stations[current_station_index + 1]
   end
 
   def previous_station
-    if @current_station_index > 0
-      @route.stations[@current_station_index - 1]
-    end
+    route.stations[current_station_index - 1]
+  end
+
+  def current_station
+    route.stations[current_station_index]
+  end
+
+  def validate!
+    raise 'Введенный номер не соответствует формату' if number !~ /[A-zА-я0-9]{3}-?[A-zА-я0-9]{2}/
   end
 end
-
-# train = Train.new('5678')
-# puts "количество инстансов = #{Train.instances}"
